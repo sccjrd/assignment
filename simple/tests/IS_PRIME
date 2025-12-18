@@ -1,0 +1,21 @@
+read_n:
+    input n e
+    if e end
+    c = n == 1
+    if c read_n
+    d = 2
+next_d:
+    m = d * d
+    c = m > n
+    if c prime
+    q = n / d
+    m = q * d
+    c = m == n
+    if c read_n
+    d = d + 1
+    goto next_d
+prime:
+    output n
+    goto read_n
+end:
+    halt

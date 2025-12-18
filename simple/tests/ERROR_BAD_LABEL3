@@ -1,0 +1,10 @@
+a = 0
+next:
+input x e
+if e next_very_long_label_very_long_label_very_very_long
+a = a + x
+goto end
+end:
+halt
+next_very_long_label_very_long_label_very_very_long:
+halt

@@ -1,0 +1,18 @@
+    input n e
+    if e end
+loop:
+    output n
+    c = n == 1
+    if c end
+    q = n / 2
+    p = 2 * q
+    c = p == n
+    if c even
+        n = 3 * n
+	n = n + 1
+    goto loop
+even:
+        n = q
+    goto loop
+end:
+    halt

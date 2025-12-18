@@ -1,0 +1,15 @@
+    i = 0
+loop:
+    input x e
+    if e print
+    @i = x
+    i = i + 1
+    goto loop
+print:
+    c = i == 0
+    if c end
+    i = i - 1
+    output @i
+    goto print
+end:
+    halt

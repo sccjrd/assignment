@@ -1,0 +1,24 @@
+next_n:
+	input n e
+	if e end
+	c = n > 1
+	if c roll
+	output n
+	goto next_n
+roll:
+	a = 0
+	b = 1
+	n = n - 2
+loop:
+	x = a + b
+	c = n > 0
+	if c next_x
+	output x
+	goto next_n
+next_x:
+	n = n - 1
+	a = b
+	b = x
+	goto loop
+end:
+	halt

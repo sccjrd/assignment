@@ -1,0 +1,37 @@
+    n = 0
+loop:
+    input x e
+    if e sort
+    @n = x
+    n = n + 1
+    goto loop
+sort:
+    i = 1
+next_i:
+    c = i == n
+    if c print
+    j = i
+    next_j:
+        k = j - 1
+	c = @j >= @k
+	if c end_j
+	t = @j
+	@j = @k
+	@k = t
+	j = j - 1
+	c = j == 0
+	if c end_j
+	goto next_j
+end_j:
+    i = i + 1
+    goto next_i
+print:
+    i = 0
+print_next:
+    c = i == n
+    if c end
+    output @i
+    i = i + 1
+    goto print_next
+end:
+    halt

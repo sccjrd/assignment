@@ -1,0 +1,32 @@
+	s = 0
+next_n:
+	input n e
+	if e end
+	@s = n
+	t = s + 1
+	@t = -1
+	t = s + 1
+	@t = -2
+start:	
+	n = @s
+	c = n > 1
+	if c recurse
+	output n
+	goto next_n
+roll:
+	a = 0
+	b = 1
+	n = n - 2
+loop:
+	x = a + b
+	c = n > 0
+	if c next_x
+	output x
+	goto next_n
+next_x:
+	n = n - 1
+	a = b
+	b = x
+	goto loop
+end:
+	halt

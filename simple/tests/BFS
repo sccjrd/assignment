@@ -1,0 +1,122 @@
+# _Simple_ Breadth-First Search
+#
+# The input is a _directed_ graph formatted as follows:
+# n m		<-- n: number of vertexes (0,1,2,...,n-1); m: number of edges
+# src1 dst1		<-- edge 1
+# src2 dst2		<-- edge 2
+# ...
+# src_m dst_m		<-- edge m
+#
+# we store the graph in two arrays:
+#    V: array of pointers (int indexes) 
+#    E: array of structures (offset --> field):
+#          0. destination vertex
+#          1. next edge (index) in list
+
+	# read n, m
+	input n x
+	if x end
+	c = n == 0
+	if c end
+	input m x
+	if x end
+
+	# initialize V[i] = -1 for i = 0,...,n-1
+	i = 0
+next_v_init:
+	@i = -1
+	i = i + 1
+	c = i < n
+	if c next_v_init
+
+	# allocate array V at position 0, and size n:
+	# allocate an array E, right after V, of size 2*m:
+	# e = begin address of the E array
+	e = n
+	# s = end address of the E array ("stack" pointer)
+	s = 2 * m
+	s = s + e
+	
+	# read m edges
+next_edge:
+	input u x
+	if x end
+	input @e x
+	if x end
+	p = e
+	e = e + 1
+	@e = @u
+	@u = p
+	e = e + 1
+	c = e < s
+	if c next_edge
+
+	input a x
+	if x default_a
+	input z x
+	if x default_z
+	goto run_bfs
+default_a:
+	a = 0
+default_z:
+	z = n - 1
+
+run_bfs:
+	output a
+	output z
+	# d = allocate a vector of size n
+	# and initialize d[i] = -1 for all i = 0,..,n-1
+	d = s
+	s = s + n
+	i = d
+next_init_dv:
+	@i = -1
+	i = i + 1
+	c = i < s
+	if c next_init_dv
+	
+	# q : empty queue of vertexes to visit: q is the head, t is the tail
+	q = s
+	t = q
+	# enqueue(q, a)
+	@t = a
+	t = t + 1
+	# d[a] = 0
+	i = d + a
+	@i = 0
+next_vertex_from_q:
+	# if q is empty, end
+	c = q == t
+	if c end
+	# u = dequeue(q)
+	u = @q
+	q = q + 1
+	# for u = dequeue(q)
+	e = @u
+	# l = d[u] + 1		(new neighbors distance)
+	i = d + u
+	l = @i + 1
+	next_neighbor:
+		c = e == -1
+		if c next_vertex_from_q
+		# v = e->target; e = e->next
+		v = @e
+		e = e + 1
+		e = @e
+		# if d[v] == -1: 
+		#    d[v] = l
+		#    enqueue(q,v)
+		i = d + v
+		c = @i >= 0
+		if c next_neighbor
+		c = v == z
+		if c end_output
+		@i = l
+		@t = v
+		t = t + 1
+		goto next_neighbor
+
+end_output:
+	output l
+end:
+	halt

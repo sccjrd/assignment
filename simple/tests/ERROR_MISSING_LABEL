@@ -1,0 +1,8 @@
+a = 0
+next_input:
+input x e
+if e end_of_input
+a = a + x
+goto next
+end_of_input:
+output a

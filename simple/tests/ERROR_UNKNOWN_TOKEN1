@@ -1,0 +1,11 @@
+# good syntax
+input x e
+if e end_of_input
+# here's the error:
+Input y e
+if e end_of_input
+a = x + y
+output a
+end_of_input:
+halt
+EOF

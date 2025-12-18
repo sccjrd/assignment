@@ -1,0 +1,8 @@
+a = 0
+next:
+input x e
+if e end
+a = a + x
+goto 
+end:
+halt

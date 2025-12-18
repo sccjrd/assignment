@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2025-12-12 Fri 11:14 -->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Graded Assignment: An Interpreter for the /Simple/ Virtual Machine</title>
+<meta name="author" content="Antonio Carzaniga" />
+<meta name="generator" content="Org Mode" />
+<style type="text/css">
+ <!--/*--><![CDATA[/*><!--*/
+ body { font-family: "Noto Sans", Helvetica, sans-serif;
+	font-size: medium;
+	padding: 2em;
+	margin: auto;
+	max-width: 50em; }
+ .title  { text-align: left;
+	   padding-bottom: 0.5ex;
+	   margin-bottom: 2ex;
+	   border-bottom: 2pt solid #000000; }
+.subtitle { text-align: right; font-size: medium; font-weight: bold; margin-top:0; }
+.todo   { font-family: "Hack", monospace; color: red; }
+.done   { font-family: "Hack", monospace; color: green; }
+.priority { font-family: "Hack", monospace; color: orange; }
+.tag    { background-color: #eeeeee; font-family: "Hack", monospace;
+	  padding: 2px; font-size: 80%; font-weight: normal; }
+.timestamp { color: #bebebe; }
+.timestamp-kwd { color: #5f9ea0; }
+.org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+.org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+.org-center { margin-left: auto; margin-right: auto; text-align: center; }
+.underline { text-decoration: underline; }
+h2 { border-top: 1pt solid #000000;
+     margin-top: 3ex; }
+#postamble p, #preamble p { font-size: 90%; margin: .2em; }
+p.verse { margin-left: 3%; }
+pre {
+    border: 1px solid #cccccc;
+    box-shadow: 3px 3px 3px #eeeeee;
+    padding: 8pt;
+    font-family: "Hack", monospace;
+    overflow: auto;
+    margin: 0;
+    background-color: #e8e8e8;
+}
+pre.src {
+    position: relative;
+    overflow: auto;
+}
+pre.example {
+    position: relative;
+    overflow: auto;
+    border-style: solid;
+    border-top-style: none;
+    border-bottom-style: none;
+    border-left-style: solid;
+    border-right-style: solid;
+    border-width: 6pt;
+    border-color: #d0d0d0;
+}
+code { 
+    font-family: "Hack", monospace;
+    padding-left: 1pt;
+    padding-right: 1pt;
+    background-color: #ebebeb;
+}
+a:link {
+    color: #603000;
+    text-decoration: none;
+    font-weight: bold; 
+}
+a:visited {
+    color: #603010;
+    text-decoration: none;
+    font-weight: bold; 
+}
+table { margin: auto; border-collapse:collapse; }
+thead { background-color: #f0f0f0; font-weight: bold; }
+caption.t-above { caption-side: top; }
+caption.t-bottom { caption-side: bottom; }
+td, th { vertical-align:top; }
+th.org-right  { text-align: center;  }
+th.org-left   { text-align: center;   }
+th.org-center { text-align: center; }
+td.org-right  { text-align: right;  }
+td.org-left   { text-align: left;   }
+td.org-center { text-align: center; }
+dt { font-weight: bold; }
+.footpara { display: inline; }
+.footdef  { margin-bottom: 1em; }
+.figure { padding: 1em; }
+.figure p { text-align: center; }
+.equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+}
+.equation {
+    vertical-align: middle;
+}
+.equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+}
+.inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+}
+#org-div-home-and-up { text-align: right; font-size: 70%; white-space: nowrap; }
+textarea { overflow-x: auto; }
+.linenr { font-size: smaller }
+.code-highlighted { background-color: #ffff00; }
+.org-info-js_info-navigation { border-style: none; }
+#org-info-js_console-label { font-size: 10px; font-weight: bold; white-space: nowrap; }
+.org-info-js_search-highlight { background-color: #ffff00; color: #000000; font-weight: bold; }
+.org-svg { }
+.face-builtin { color: #338033; }
+.face-comment { color: #5C7A99; }
+.face-comment-delimiter { color: #5C7A99; }
+.face-constant { color: #335980; }
+.face-doc { color: #80335A; }
+.face-function-name { color: #3D3380; font-weight: bold; }
+.face-keyword { color: #000000; font-weight: bold; }
+.face-preprocessor { color: #338033; }
+.face-string { color: #648033; font-style: italic; }
+.face-type { color: #803333; }
+.face-variable-name { color: #333380; }
+  /*]]>*/-->
+</style>
+<script>
+  window.MathJax = {
+    tex: {
+      ams: {
+        multlineWidth: '85%'
+      },
+      tags: 'ams',
+      tagSide: 'right',
+      tagIndent: '.8em'
+    },
+    chtml: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    svg: {
+      scale: 1.0,
+      displayAlign: 'center',
+      displayIndent: '0em'
+    },
+    output: {
+      font: 'mathjax-modern',
+      displayOverflow: 'overflow'
+    }
+  };
+</script>
+
+<script
+  id="MathJax-script"
+  async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">Graded Assignment: An Interpreter for the <i>Simple</i> Virtual Machine</h1>
+<p>
+The <i>simple</i> virtual machine executes programs written in a simple,
+assembly-type language (specified below).  You must write, in a source
+file called <code>simple.c</code>, an implementation of the <i>simple</i> virtual
+machine.  The virtual machine must run the program given as the first
+command-line argument.
+</p>
+<div id="outline-container-org1c063c9" class="outline-2">
+<h2 id="org1c063c9">General Syntactic Structure of <i>Simple</i> Programs</h2>
+<div class="outline-text-2" id="text-org1c063c9">
+<p>
+The following is an example of a program that outputs the
+sum of all the values in its input:
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text">    # This is a _simple_ program
+    a = 0
+loop:
+    # read an input value and store it in register x
+    input x e
+    # e is TRUE when the input reaches its end
+    if e end
+    a = a + x
+    goto loop
+end:
+    output a
+    halt
+</pre>
+</div>
+
+<p>
+A <i>simple</i> program consists of a sequence of instructions.
+Instructions can be labeled, so that the execution can jump to those
+instructions from any point in the program.  In the program source,
+each instruction or label is in its own line of code, so individual
+instructions and labels can be read line-by-line.  The maximum length
+of a source-code line is 1024 characters.  A line may also contain a
+comment, as illustrated in the example above.  Each line defines an
+instruction as a sequence of space-separated <i>tokens.</i> The space and
+tabulation characters (<code>' '</code> and <code>'\t'</code>) serve as separators.  Zero or
+more space characters may appear at the beginning and at the end of
+each line. One or more separator characters appear between tokens.
+</p>
+</div>
+</div>
+<div id="outline-container-org4f5d566" class="outline-2">
+<h2 id="org4f5d566">Data Model, Registers, and Memory</h2>
+<div class="outline-text-2" id="text-org4f5d566">
+<p>
+The <i>simple</i> virtual machine operates on <code>int</code> data.  Registers,
+memory cells, input and output values, and computed values are all of
+type <code>int</code> as defined by your C compiler.  For instructions that
+compute or check logical conditions, <code>int</code> values are interpreted as
+Boolean values in the same way as in C.  That is, 0 is <i>false</i>, and
+anything other than 0 is <i>true.</i>
+</p>
+
+<p>
+The machine has 26 registers named <code>a</code>, <code>b</code>, <code>c</code>, &#x2026;, <code>z</code>.  Thus a
+single letter <code>a</code>, <code>b</code>, &#x2026;, or <code>z</code> in the source code is a reference
+to the corresponding register.  The machine also has a memory that can
+be addressed using any register.  In other words, the memory consists
+of an array (of <code>int</code> objects) that can be indexed by a register
+value.  The base address is 0, and the memory array virtually extends
+to all the memory cells addressable by a non-negative <code>int</code> value.  In
+the source code, a memory reference is written with the character <code>@</code>
+immediately followed by a register name.  For example, <code>@i</code> refers to
+the memory cell whose address is the value of register <code>i</code>.
+</p>
+
+<p>
+We say that the memory extends &ldquo;virtually&rdquo; up to all the addressable
+cells in the sense that the virtual machine must allocate memory <i>as
+needed</i> by the program.  In practice, with a program like the one
+above that does not use the memory at all (beyond registers), the
+virtual machine should allocate no memory at all.  However, whenever
+the program stores a value in memory, the virtual machine must make
+sure that the requested memory cell is available.
+</p>
+</div>
+</div>
+<div id="outline-container-org0e6f247" class="outline-2">
+<h2 id="org0e6f247">Input/Output</h2>
+<div class="outline-text-2" id="text-org0e6f247">
+<p>
+The <i>simple</i> virtual machine has one input channel and one output
+channel.  The standard input and standard output are used as input and
+output channels, with a decimal textual encoding of integer values.
+In practice, this the input channel must consist of decimal numbers
+separated by space characters (including but not necessarily new-line
+characters), and therefore can be read by <code>scanf("%d",...)</code>. The
+output channel must consist of decimal numbers each terminated by a
+new-line character, and therefore can be be written by
+<code>printf("%d\n",...)</code>.
+</p>
+
+<p>
+In the source code, the <i>input</i> instruction is defined by three,
+tokens:
+</p>
+
+<p>
+<code>input</code> <i>ref<sub>v</sub></i> <i>ref<sub>e</sub></i>
+</p>
+
+<p>
+<i>ref<sub>v</sub></i> is a reference (register or memory) where the instruction
+stores the <i>value</i> read from the input.  <i>ref<sub>e</sub></i> is a reference in
+which the instruction stores a possible <i>end-of-file or error</i>
+condition as a Boolean value.  For example <code>input x e</code> attempts to
+read an integer from the input channel, and when successful stores its
+value in register <code>x</code> and a <i>false</i> value in register <code>e</code> indicating
+that there are no error or end-of-file conditions.  In case of error
+or end-of-input, the value stored in <code>v</code> is indeterminate, and the
+value of register <code>e</code> is <i>true</i>.
+</p>
+
+<p>
+The <i>output</i> instruction consists of two tokens:
+</p>
+
+<p>
+<code>output</code> <i>value</i>
+</p>
+
+<p>
+The <i>value</i> token is a reference or a literal value, and it is what is
+printed onto the output channel.
+</p>
+</div>
+</div>
+<div id="outline-container-orgc24ca77" class="outline-2">
+<h2 id="orgc24ca77">Labels and Program Flow</h2>
+<div class="outline-text-2" id="text-orgc24ca77">
+<p>
+A program consists of a sequence of instructions.  Some instructions
+may be labeled.  In the source code, a label is defined by a single
+token consisting of a non-empty string of at most 50 characters
+followed immediately by a colon character (<code>:</code>), without any space in
+between. A label applies to the instruction that immediately <i>follows</i>
+the label in the source code.  A program where a label is followed by
+another label, or where there is no instruction following a label is
+invalid.
+</p>
+
+<p>
+The execution of a program proceeds from one instruction to the next,
+except for the <i>goto</i>, <i>if</i>, and <i>halt</i> instructions detailed below.
+The execution may also be interrupted due to a runtime error.  These
+cases are also detailed below.
+</p>
+
+<p>
+The <i>goto</i> instruction is defined by two tokens:
+</p>
+
+<p>
+<code>goto</code> <i>label</i>
+</p>
+
+<p>
+The execution proceeds with the instruction labeled <i>label</i>.  If the
+given label does not exist, the program is invalid.
+</p>
+
+<p>
+The <i>if</i> instruction is defined by three tokens:
+</p>
+
+<p>
+<code>if</code> <i>cond</i> <i>label</i>
+</p>
+
+<p>
+If the value of <i>cond</i>, which is a reference to a register or memory
+cell, is <i>true</i>, then the execution continues with the instruction
+labeled <i>label</i>.  Otherwise, the execution continues with the next
+instruction.
+</p>
+
+<p>
+The <i>halt</i> instruction is defined by a single token:
+</p>
+
+<p>
+<code>halt</code>
+</p>
+
+<p>
+and causes the program to terminate immediately.
+</p>
+
+<p>
+A program also terminates after the last instruction, if that is not a
+<i>goto</i> instruction.
+</p>
+</div>
+</div>
+<div id="outline-container-orgd30d7aa" class="outline-2">
+<h2 id="orgd30d7aa">Assignments and Expressions</h2>
+<div class="outline-text-2" id="text-orgd30d7aa">
+<p>
+An <i>assignment</i> instruction is defined by three tokens:
+</p>
+
+<p>
+<i>dest</i> <code>=</code> <i>src</i>
+</p>
+
+<p>
+<i>dest</i> is a reference to a register or memory cell; <i>src</i> is a literal
+value or a reference.  The object referenced by <i>dest</i> takes the value
+of <i>src</i>.
+</p>
+
+<p>
+An assignment can also take a value computed from a binary operator:
+</p>
+
+<p>
+<i>dest</i> <code>=</code> <i>a</i> <i>op</i> <i>b</i>
+</p>
+
+<p>
+Here, too, <i>dest</i> is a reference to the object whose value will be
+assigned.  The expression on the right-hand side of the <code>=</code> token
+consists of three tokens: <i>a</i> and <i>b</i> are literal values or
+references; <i>op</i> is one of the following tokens:
+</p>
+
+<dl class="org-dl">
+<dt><code>+</code></dt><dd>addition.  Computes and stores the value of the addition
+\(a+b\) in the destination register or memory cell.</dd>
+
+<dt><code>-</code></dt><dd>subtraction. Computes and stores the value of the
+difference \(a-b\) into the destination register or memory cell.</dd>
+
+<dt><code>*</code></dt><dd>multiplication. Computes and stores the value of the
+multiplication \(a\cdot b\) into the destination register or memory
+cell.</dd>
+
+<dt><code>/</code></dt><dd>integer division Computes and stores the value of the
+integer division \(a/b\).  If the \(b\) is zero, the program
+terminates immediately with an error.</dd>
+
+<dt><code>==</code></dt><dd>equals comparison. Computes and stores the Boolean value
+\(a=b\) into the destination register or memory cell.</dd>
+
+<dt><code>!=</code></dt><dd>not-equals comparison.  Computes and stores the Boolean
+value \(a\ne b\) into the destination register or memory cell.</dd>
+
+<dt><code>&lt;</code></dt><dd>less-than comparison.  Computes and stores the Boolean
+value \(a\lt b\) into the destination register or memory cell.</dd>
+
+<dt><code>&gt;</code></dt><dd>greater-than comparison.  Computes and stores the Boolean
+value \(a\gt b\) into the destination register or memory cell.</dd>
+
+<dt><code>&lt;=</code></dt><dd>less-than or equals comparison.  Computes and stores the Boolean
+value \(a\le b\) into the destination register or memory cell.</dd>
+
+<dt><code>&gt;=</code></dt><dd>greater-than or equals comparison.  Computes and stores
+the Boolean value \(a\ge b\) into the destination register or memory
+cell.</dd>
+</dl>
+</div>
+</div>
+<div id="outline-container-org1c8d07d" class="outline-2">
+<h2 id="org1c8d07d">Program Validity and Dynamic Failures</h2>
+<div class="outline-text-2" id="text-org1c8d07d">
+<p>
+If the given program is <i>invalid</i>, then the the virtual machine must
+return immediately with an error and a failure exit status.  A program
+is invalid if the syntax of the program does not conform with the
+above specifications.
+</p>
+
+<p>
+The execution might also terminate, with an appropriate error message
+and exist status code, when the execution of an instruction fails, or
+due to error conditions within the execution environment.  Such errors
+include:
+</p>
+
+<ul class="org-ul">
+<li>access to an invalid memory address (e.g., a negative address)</li>
+
+<li>memory allocation failure</li>
+
+<li>input/output failures</li>
+
+<li>division by zero</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgb7d8f40" class="outline-2">
+<h2 id="orgb7d8f40">Example Program</h2>
+<div class="outline-text-2" id="text-orgb7d8f40">
+<p>
+The following is an implementation of the <i>insertion-sort</i> algorithm.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-text">    n = 0
+loop:
+    input x e
+    if e sort
+    @n = x
+    n = n + 1
+    goto loop
+sort:
+    i = 1
+next_i:
+    c = i == n
+    if c print
+    j = i
+    next_j:
+        k = j - 1
+        c = @j &gt;= @k
+        if c end_j
+        t = @j
+        @j = @k
+        @k = t
+        j = j - 1
+        c = j == 0
+        if c end_j
+        goto next_j
+end_j:
+    i = i + 1
+    goto next_i
+print:
+    i = 0
+print_next:
+    c = i == n
+    if c end
+    output @i
+    i = i + 1
+    goto print_next
+end:
+    halt
+</pre>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>
