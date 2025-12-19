@@ -165,19 +165,72 @@ void handle_label(char *s, int line_n)
 
 /* ----------- handle instruction ----------- */
 
-int is_valid_instruction(char *s, int line_n)
+TokenType recognize_token(char *s, int line_n)
 {
+    size_t len = strlen(s);
+
+    if (len == 1)
+    {
+        switch (s[0])
+        {
+        case '+':
+            return ADDITION;
+        case '-':
+            return SUBTRACTION;
+        case '*':
+            return MULTIPLICATION;
+        case '/':
+            return INTEGER_DIVISION;
+        case '<':
+            return LESS_THAN;
+        case '>':
+            return GREATER_THAN;
+        case '=':
+            return ASSIGNMENT;
+        }
+    }
+
+    if (len == 2)
+    {
+        switch (s[0])
+        {
+        case '=':
+            if (s[1] == '=')
+                return EQUALS;
+            break;
+        case '!':
+            if (s[1] == '=')
+                return NOT_EQUALS;
+            break;
+        case '<':
+            if (s[1] == '=')
+                return LESS_THAN_EQUAL;
+            break;
+        case '>':
+            if (s[1] == '=')
+                return GREATER_THAN_EQUAL;
+            break;
+        }
+    }
+
+    if (strcmp(s, "goto") == 0)
+        return GOTO;
+    if (strcmp(s, "if") == 0)
+        return IF;
+    if (strcmp(s, "halt") == 0)
+        return HALT;
+    if (strcmp(s, "input") == 0)
+        return INPUT;
+    if (strcmp(s, "output") == 0)
+        return OUTPUT;
+
+    handle_error(INVALID_SYNTAX, line_n);
+    return -1;
 }
 
 // tokenize the instruction line and store the tokens
 void handle_instruction(char *s, int line_n, struct Token *tokens)
 {
-    char *token = strtok(s, " ");
-    while (token)
-    {
-        puts(token);
-        token = strtok(NULL, " ");
-    }
 }
 
 /* ----------- logic to clean inputted lines ----------- */
