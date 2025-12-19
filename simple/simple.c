@@ -14,7 +14,7 @@ Inspired also the line classification later with definitions and switch statemen
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_CHAR_LINE 1024
+#define MAX_STRING_LENGTH 1024
 
 typedef enum
 {
@@ -35,6 +35,7 @@ typedef enum
 
 typedef enum
 {
+    // expression
     ASSIGNMENT,
     ADDITION,
     SUBTRACTION,
@@ -45,18 +46,24 @@ typedef enum
     LESS_THAN,
     GREATER_THAN,
     LESS_THAN_EQUAL,
-    MORE_THAN_EQUAL
-} ExpressionType;
+    GREATER_THAN_EQUAL,
 
-typedef enum
-{
+    // flow
     GOTO,
     IF,
     HALT,
     INPUT,
     OUTPUT,
+} TokenType;
 
-} FlowType;
+struct Token
+{
+    TokenType type;
+    char *string;
+    int line_n;
+}
+
+/* ----------- Error Handler -----------  */
 
 handle_error(ErrorCode code, int line_n)
 {
@@ -87,6 +94,34 @@ handle_error(ErrorCode code, int line_n)
     exit(EXIT_FAILURE);
 }
 
+/* ----------- handling list of tokens ----------- */
+
+// will be a dynamic array of tokens
+struct Token *tokens = NULL;
+size_t token_count = 0;
+size_t token_capacity = 0;
+
+void init_token_list()
+{
+    token_capacity = 5;
+    tokens = (struct Token *)malloc(token_capacity * sizeof(struct Token));
+    if (!tokens)
+        handle_error(MEMORY_ALLOCATION_FAILED, 0);
+    token_count = 0;
+}
+
+// increase the size of the token list if needed
+void ensure_token_capacity()
+{
+    if (token_count >= token_capacity)
+    {
+        token_capacity *= 2;
+        tokens = (struct Token *)realloc(tokens, token_capacity * sizeof(struct Token));
+        if (!tokens)
+            handle_error(MEMORY_ALLOCATION_FAILED, 0);
+    }
+}
+
 /* ----------- I/O operations ----------- */
 
 /* read as instructed and handle error*/
@@ -107,7 +142,7 @@ void print_value(int v)
 
 /* ----------- handle labels ----------- */
 
-/* if a valid name, so with no spaces, extract label name*/
+/* if a valid name, so with no spaces, extract label name */
 void extract_label_name(char *s, int line_n)
 {
     size_t n = strlen(s);
@@ -134,7 +169,8 @@ int is_valid_instruction(char *s, int line_n)
 {
 }
 
-void handle_instruction(char *s, int line_n)
+// tokenize the instruction line and store the tokens
+void handle_instruction(char *s, int line_n, struct Token *tokens)
 {
     char *token = strtok(s, " ");
     while (token)
@@ -191,13 +227,17 @@ LineType get_line_type(const char *s)
 
 /* ----------- execute code ----------- */
 
+void execute_code() {}
+
 /* ----------- main functions ----------- */
 void read_code(FILE *file)
 {
-    char buffer[MAX_CHAR_LINE];
+    char buffer[MAX_STRING_LENGTH];
     int line_n = 0;
+    // call the init token list to prepare for token storage
+    init_token_list();
 
-    while (fgets(buffer, MAX_CHAR_LINE, file))
+    while (fgets(buffer, MAX_STRING_LENGTH, file))
     {
 
         line_n++;
@@ -218,7 +258,7 @@ void read_code(FILE *file)
             break;
 
         case LINE_INSTRUCTION:
-
+            handle_instruction(buffer, line_n, tokens);
             break;
         }
     }
