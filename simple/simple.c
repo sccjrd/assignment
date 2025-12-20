@@ -35,6 +35,12 @@ typedef enum
 
 typedef enum
 {
+    // operand
+    REGISTER,
+    MEMORY_REFERENCE,
+    LITERAL,
+    LABEL_REFERENCE,
+
     // expression
     ASSIGNMENT,
     ADDITION,
@@ -61,11 +67,11 @@ struct Token
     TokenType type;
     char *string;
     int line_n;
-}
+};
 
 /* ----------- Error Handler -----------  */
 
-handle_error(ErrorCode code, int line_n)
+void handle_error(ErrorCode code, int line_n)
 {
     switch (code)
     {
@@ -143,7 +149,7 @@ void print_value(int v)
 /* ----------- handle labels ----------- */
 
 /* if a valid name, so with no spaces, extract label name */
-void extract_label_name(char *s, int line_n)
+char *extract_label_name(char *s, int line_n)
 {
     size_t n = strlen(s);
     if (strchr(s, " "))
@@ -231,6 +237,14 @@ TokenType recognize_token(char *s, int line_n)
 // tokenize the instruction line and store the tokens
 void handle_instruction(char *s, int line_n, struct Token *tokens)
 {
+    char *token_str = strtok(s, " ");
+    while (token_str != NULL)
+    {
+        // recognize token type
+        TokenType type = recognize_token(token_str, line_n);
+        // store token
+        token_str = strtok(NULL, " ");
+    }
 }
 
 /* ----------- logic to clean inputted lines ----------- */
@@ -278,6 +292,57 @@ LineType get_line_type(const char *s)
     return LINE_INSTRUCTION;
 }
 
+/* ----------- handle expressions ----------- */
+
+void handle_assignment(char *address, char value)
+{
+}
+void handle_addition() {}
+void handle_subtraction() {}
+void handle_multiplication() {}
+void handle_integer_division() {}
+
+int handle_equals(char *a, char *b)
+{
+    if (strcmp(a, b) == 0)
+    {
+        return 0;
+    }
+    return 1;
+}
+void handle_not_equals(char *a, char *b)
+{
+    if (strcmp(a, b) != 0)
+    {
+        return 0;
+    }
+    return 1;
+}
+void handle_less_than() {}
+void handle_greater_than() {}
+void handle_less_than_equal() {}
+void handle_greater_than_equal() {}
+
+/* ----------- handle flow ----------- */
+
+void handle_goto(char *Label)
+{
+    // if label exists
+
+    // jump to label
+}
+void handle_if(char *condition, char *label)
+{
+    // evaluate condition
+
+    // if true, jump to label
+}
+void handle_halt()
+{
+    // free allocated memory before exiting
+    exit(0);
+}
+
 /* ----------- execute code ----------- */
 
 void execute_code() {}
@@ -311,7 +376,7 @@ void read_code(FILE *file)
             break;
 
         case LINE_INSTRUCTION:
-            handle_instruction(buffer, line_n, tokens);
+            handle_instruction(buffer, line_n);
             break;
         }
     }
@@ -319,13 +384,17 @@ void read_code(FILE *file)
 
 int main(int argc, char *argv[])
 {
-    if (argc == 2)
-    {
-        FILE *file;
-        file = fopen(argv[1], "r");
+    if (argc != 2)
+        return EXIT_FAILURE;
+
+    FILE *file = fopen(argv[1], "r");
         if (!file)
-            return 1;
+        handle_error(INVALID_INPUT, 0);
+
         read_code(file);
-    }
-    return 1;
+    fclose(file);
+
+    execute_code();
+    cleanup();
+    return 0;
 }
