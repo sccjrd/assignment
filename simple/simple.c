@@ -475,6 +475,10 @@ void handle_instruction(char *s, int line_n)
     char *token = strtok(s, " \t");
     while (token != NULL && instr->expression_count < MAX_TOKENS_PER_LINE)
     {
+        // Check for too many tokens
+        if (instr->expression_count >= MAX_TOKENS_PER_LINE)
+            handle_error(INVALID_SYNTAX, line_n);
+
         Token tk = parse_token(token, line_n);
 
         // Check if this is a label reference that needs resolving
