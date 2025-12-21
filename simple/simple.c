@@ -6,15 +6,18 @@ Error handling:
 https://peerdh.com/blogs/programming-insights/custom-error-handling-mechanisms-in-c
 Copied code and adjusted with errors to handle provided in the last section of the assignment guide
 Inspired also the line classification later with definitions and switch statement
-
-
+Overall design:
+https://craftinginterpreters.com/contents.html
 */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define MAX_STRING_LENGTH 1024
+#define MAX_LABEL_LENGTH 51
+#define MAX_TOKENS_PER_LINE 5
 
 typedef enum
 {
@@ -35,26 +38,23 @@ typedef enum
 
 typedef enum
 {
-    // operand
     REGISTER,
     MEMORY_REFERENCE,
     LITERAL,
     LABEL_REFERENCE,
 
-    // expression
     ASSIGNMENT,
     ADDITION,
     SUBTRACTION,
     MULTIPLICATION,
-    INTEGER_DIVISION,
+    DIVISION,
     EQUALS,
     NOT_EQUALS,
     LESS_THAN,
     GREATER_THAN,
-    LESS_THAN_EQUAL,
+    LESS_THANK_EQUAL,
     GREATER_THAN_EQUAL,
 
-    // flow
     GOTO,
     IF,
     HALT,
@@ -62,14 +62,42 @@ typedef enum
     OUTPUT,
 } TokenType;
 
-struct Token
+/* ----------- structures ----------- */
+
+typedef struct
 {
     TokenType type;
-    char *string;
-    int line_n;
-};
+    int value;
+} Token;
 
-/* ----------- Error Handler -----------  */
+typedef struct
+{
+    Token tokens[MAX_TOKENS_PER_LINE];
+    int expression_count;
+    int source_line;
+} Instruction;
+
+typedef struct
+{
+    char name[MAX_LABEL_LENGTH];
+    int instruction_index;
+} Label;
+
+/* ----------- initial declarations ----------- */
+
+Instruction *instructions = NULL;
+int instruction_count = 0;
+int instruction_capacity = 0;
+
+Label *labels = NULL;
+int label_count = 0;
+int label_capacity = 0;
+
+int registers[26] = {0};
+int *memory = NULL;
+int memory_size = 0;
+
+/* ----------- error handler  ----------- */
 
 void handle_error(ErrorCode code, int line_n)
 {
@@ -100,156 +128,80 @@ void handle_error(ErrorCode code, int line_n)
     exit(EXIT_FAILURE);
 }
 
-/* ----------- handling list of tokens ----------- */
+/* ----------- memory handlers -----------*/
 
-// will be a dynamic array of tokens
-struct Token *tokens = NULL;
-size_t token_count = 0;
-size_t token_capacity = 0;
-
-void init_token_list()
+void init_instructions()
 {
-    token_capacity = 5;
-    tokens = (struct Token *)malloc(token_capacity * sizeof(struct Token));
-    if (!tokens)
+    instruction_capacity = 16;
+    instructions = malloc(instruction_capacity * sizeof(Instruction));
+    if (!instructions)
         handle_error(MEMORY_ALLOCATION_FAILED, 0);
-    token_count = 0;
+    instruction_count = 0;
 }
 
-// increase the size of the token list if needed
-void ensure_token_capacity()
+void ensure_instruction_capacity()
 {
-    if (token_count >= token_capacity)
+    if (instruction_count >= instruction_capacity)
     {
-        token_capacity *= 2;
-        tokens = (struct Token *)realloc(tokens, token_capacity * sizeof(struct Token));
-        if (!tokens)
+        instruction_capacity *= 2;
+        instructions = realloc(instructions, instruction_capacity * sizeof(Instruction));
+        if (!instructions)
             handle_error(MEMORY_ALLOCATION_FAILED, 0);
     }
 }
 
-/* ----------- I/O operations ----------- */
-
-/* read as instructed and handle error*/
-int read_stdin()
+void init_labels()
 {
-    int value;
-    if (scanf("%d", &value) != 1)
-        handle_error(INVALID_INPUT, 0);
-    return value;
+    label_capacity = 16;
+    labels = malloc(label_capacity * sizeof(Label));
+    if (!labels)
+        handle_error(MEMORY_ALLOCATION_FAILED, 0);
+    label_count = 0;
 }
 
-/* write as instructed and handle error*/
-void print_value(int v)
+void ensure_label_capacity()
 {
-    if (printf("%d\n", v) < 0)
-        handle_error(INVALID_OUTPUT, 0);
-}
-
-/* ----------- handle labels ----------- */
-
-/* if a valid name, so with no spaces, extract label name */
-char *extract_label_name(char *s, int line_n)
-{
-    size_t n = strlen(s);
-    if (strchr(s, " "))
-        handle_error(INVALID_SYNTAX, line_n);
-    s[n - 1] = '\0';
-    trim(s);
-    return s;
-}
-
-void handle_label(char *s, int line_n)
-{
-    extract_label_name(s, line_n);
-    // now we have a valid label name, we need to save it as categorized label,
-    // maybe create a struct ? Dunno
-    // the label also has a position in the to be executed code, saved so that
-    // it can be access the position at constant position, so maybe a list of labels
-    // in the code with the code position
-}
-
-/* ----------- handle instruction ----------- */
-
-TokenType recognize_token(char *s, int line_n)
-{
-    size_t len = strlen(s);
-
-    if (len == 1)
+    if (label_count >= label_capacity)
     {
-        switch (s[0])
-        {
-        case '+':
-            return ADDITION;
-        case '-':
-            return SUBTRACTION;
-        case '*':
-            return MULTIPLICATION;
-        case '/':
-            return INTEGER_DIVISION;
-        case '<':
-            return LESS_THAN;
-        case '>':
-            return GREATER_THAN;
-        case '=':
-            return ASSIGNMENT;
-        }
-    }
-
-    if (len == 2)
-    {
-        switch (s[0])
-        {
-        case '=':
-            if (s[1] == '=')
-                return EQUALS;
-            break;
-        case '!':
-            if (s[1] == '=')
-                return NOT_EQUALS;
-            break;
-        case '<':
-            if (s[1] == '=')
-                return LESS_THAN_EQUAL;
-            break;
-        case '>':
-            if (s[1] == '=')
-                return GREATER_THAN_EQUAL;
-            break;
-        }
-    }
-
-    if (strcmp(s, "goto") == 0)
-        return GOTO;
-    if (strcmp(s, "if") == 0)
-        return IF;
-    if (strcmp(s, "halt") == 0)
-        return HALT;
-    if (strcmp(s, "input") == 0)
-        return INPUT;
-    if (strcmp(s, "output") == 0)
-        return OUTPUT;
-
-    handle_error(INVALID_SYNTAX, line_n);
-    return -1;
-}
-
-// tokenize the instruction line and store the tokens
-void handle_instruction(char *s, int line_n, struct Token *tokens)
-{
-    char *token_str = strtok(s, " ");
-    while (token_str != NULL)
-    {
-        // recognize token type
-        TokenType type = recognize_token(token_str, line_n);
-        // store token
-        token_str = strtok(NULL, " ");
+        label_capacity *= 2;
+        labels = realloc(labels, label_capacity * sizeof(Label));
+        if (!labels)
+            handle_error(MEMORY_ALLOCATION_FAILED, 0);
     }
 }
 
-/* ----------- logic to clean inputted lines ----------- */
+void ensure_memory(int address, int line_n)
+{
+    if (address < 0)
+        handle_error(INVALID_MEMORY_ACCESS, line_n);
 
-/* replace the last line char if is newline with eol*/
+    if (address >= memory_size)
+    {
+        int new_size = (address + 1) * 2;
+        int *new_memory = realloc(memory, new_size * sizeof(int));
+        if (!new_memory)
+            handle_error(MEMORY_ALLOCATION_FAILED, line_n);
+
+        for (int i = memory_size; i < new_size; i++)
+            new_memory[i] = 0;
+
+        memory = new_memory;
+        memory_size = new_size;
+    }
+}
+
+void cleanup()
+{
+    free(instructions);
+    free(labels);
+    free(memory);
+    instructions = NULL;
+    labels = NULL;
+    memory = NULL;
+}
+
+/* ----------- string helper functions ----------- */
+
 void strip_newline(char *s)
 {
     size_t n = strlen(s);
@@ -257,7 +209,6 @@ void strip_newline(char *s)
         s[n - 1] = '\0';
 }
 
-/* remove comments from a string*/
 void strip_comment(char *s)
 {
     char *p = strchr(s, '#');
@@ -265,7 +216,6 @@ void strip_comment(char *s)
         *p = '\0';
 }
 
-/* remove all the whitespaces before and after the string */
 void trim(char *s)
 {
     char *start = s;
@@ -281,7 +231,6 @@ void trim(char *s)
     }
 }
 
-/* simple checking line type*/
 LineType get_line_type(const char *s)
 {
     if (s[0] == '\0')
@@ -292,72 +241,310 @@ LineType get_line_type(const char *s)
     return LINE_INSTRUCTION;
 }
 
-/* ----------- handle expressions ----------- */
+/* ----------- Label Management ----------- */
 
-void handle_assignment(char *address, char value)
+void is_valid_label(const char *name, int line_n)
 {
-}
-void handle_addition() {}
-void handle_subtraction() {}
-void handle_multiplication() {}
-void handle_integer_division() {}
+    if (strchr(name, ' ') || strchr(name, '\t') || strlen(name) >= MAX_LABEL_LENGTH)
+        handle_error(INVALID_SYNTAX, line_n);
 
-int handle_equals(char *a, char *b)
-{
-    if (strcmp(a, b) == 0)
+    for (int i = 0; i < label_count; i++)
     {
+        if (strcmp(labels[i].name, name) == 0)
+            handle_error(INVALID_SYNTAX, line_n);
+    }
+}
+
+void add_label(const char *name, int instruction_index, int line_n)
+{
+
+    ensure_label_capacity();
+
+    strcpy(labels[label_count].name, name);
+    labels[label_count].instruction_index = instruction_index;
+    label_count++;
+}
+
+int find_label(const char *name)
+{
+    for (int i = 0; i < label_count; i++)
+    {
+        if (strcmp(labels[i].name, name) == 0)
+            return labels[i].instruction_index;
+    }
+    return -1;
+}
+
+void handle_label(char *s, int line_n)
+{
+    size_t n = strlen(s);
+    s[n - 1] = '\0';
+    trim(s);
+
+    is_valid_label(s, line_n);
+    add_label(s, instruction_count, line_n);
+}
+
+/* ----------- Token Recognition ----------- */
+
+int is_register(const char *s)
+{
+    return strlen(s) == 1 && s[0] >= 'a' && s[0] <= 'z';
+}
+
+int is_memory_ref(const char *s)
+{
+    return strlen(s) == 2 && s[0] == '@' && s[1] >= 'a' && s[1] <= 'z';
+}
+
+int is_literal(const char *s)
+{
+    if (*s == '-' || *s == '+')
+        s++;
+    if (*s == '\0')
         return 0;
+    while (*s)
+    {
+        if (!isdigit(*s))
+            return 0;
+        s++;
     }
     return 1;
 }
-void handle_not_equals(char *a, char *b)
+
+Token parse_token(const char *s, int line_n)
 {
-    if (strcmp(a, b) != 0)
+    Token tk = {0};
+    size_t len = strlen(s);
+
+    // operators tokens
+    if (len == 1)
     {
-        return 0;
+        switch (s[0])
+        {
+        case '+':
+            tk.type = ADDITION;
+            return tk;
+        case '-':
+            tk.type = SUBTRACTION;
+            return tk;
+        case '*':
+            tk.type = MULTIPLICATION;
+            return tk;
+        case '/':
+            tk.type = DIVISION;
+            return tk;
+        case '<':
+            tk.type = LESS_THAN;
+            return tk;
+        case '>':
+            tk.type = GREATER_THAN;
+            return tk;
+        case '=':
+            tk.type = ASSIGNMENT;
+            return tk;
+        }
     }
-    return 1;
+
+    if (len == 2)
+    {
+        if (s[0] == '=' && s[1] == '=')
+        {
+            tk.type = EQUALS;
+            return tk;
+        }
+        if (s[0] == '!' && s[1] == '=')
+        {
+            tk.type = NOT_EQUALS;
+            return tk;
+        }
+        if (s[0] == '<' && s[1] == '=')
+        {
+            tk.type = LESS_THANK_EQUAL;
+            return tk;
+        }
+        if (s[0] == '>' && s[1] == '=')
+        {
+            tk.type = GREATER_THAN_EQUAL;
+            return tk;
+        }
+    }
+
+    // flow tokens
+    if (strcmp(s, "goto") == 0)
+    {
+        tk.type = GOTO;
+        return tk;
+    }
+    if (strcmp(s, "if") == 0)
+    {
+        tk.type = IF;
+        return tk;
+    }
+    if (strcmp(s, "halt") == 0)
+    {
+        tk.type = HALT;
+        return tk;
+    }
+    if (strcmp(s, "input") == 0)
+    {
+        tk.type = INPUT;
+        return tk;
+    }
+    if (strcmp(s, "output") == 0)
+    {
+        tk.type = OUTPUT;
+        return tk;
+    }
+
+    // Register (a-z)
+    if (is_register(s))
+    {
+        tk.type = REGISTER;
+        tk.value = s[0] - 'a'; // 0-25
+        return tk;
+    }
+
+    // Memory reference (@a-@z)
+    if (is_memory_ref(s))
+    {
+        tk.type = MEMORY_REFERENCE;
+        tk.value = s[1] - 'a'; // Register index for address
+        return tk;
+    }
+
+    // Literal integer
+    if (is_literal(s))
+    {
+        tk.type = LITERAL;
+        tk.value = atoi(s);
+        return tk;
+    }
+
+    // Must be a label reference (for goto/if)
+    tk.type = LABEL_REFERENCE;
+    tk.value = -1; // Will be resolved later
+    // Store label name temporarily - we'll resolve it after parsing
+    // For now, we need to handle this differently
+
+    return tk;
 }
-void handle_less_than() {}
-void handle_greater_than() {}
-void handle_less_than_equal() {}
-void handle_greater_than_equal() {}
 
-/* ----------- handle flow ----------- */
+/* ----------- Instruction Parsing ----------- */
 
-void handle_goto(char *Label)
+// Temporary storage for unresolved label references
+typedef struct
 {
-    // if label exists
+    int instruction_index;
+    int token_index;
+    char label_name[MAX_LABEL_LENGTH];
+} UnresolvedLabel;
 
-    // jump to label
-}
-void handle_if(char *condition, char *label)
+UnresolvedLabel *unresolved_labels = NULL;
+int unresolved_count = 0;
+int unresolved_capacity = 0;
+
+void add_unresolved_label(int instr_idx, int idx, const char *name, int line_n)
 {
-    // evaluate condition
+    if (unresolved_count >= unresolved_capacity)
+    {
+        unresolved_capacity = unresolved_capacity == 0 ? 16 : unresolved_capacity * 2;
+        unresolved_labels = realloc(unresolved_labels, unresolved_capacity * sizeof(UnresolvedLabel));
+        if (!unresolved_labels)
+            handle_error(MEMORY_ALLOCATION_FAILED, line_n);
+    }
 
-    // if true, jump to label
+    if (strlen(name) >= MAX_LABEL_LENGTH)
+        handle_error(INVALID_SYNTAX, line_n);
+
+    unresolved_labels[unresolved_count].instruction_index = instr_idx;
+    unresolved_labels[unresolved_count].token_index = idx;
+    strcpy(unresolved_labels[unresolved_count].label_name, name);
+    unresolved_count++;
 }
-void handle_halt()
+
+void handle_instruction(char *s, int line_n)
 {
-    // free allocated memory before exiting
-    exit(0);
+    ensure_instruction_capacity();
+
+    Instruction *instr = &instructions[instruction_count];
+    instr->expression_count = 0;
+    instr->source_line = line_n;
+
+    // Tokenize the line
+    char *token = strtok(s, " \t");
+    while (token != NULL && instr->expression_count < MAX_TOKENS_PER_LINE)
+    {
+        Token tk = parse_token(token, line_n);
+
+        // Check if this is a label reference that needs resolving
+        if (tk.type == LABEL_REFERENCE)
+        {
+            add_unresolved_label(instruction_count, instr->expression_count, token, line_n);
+        }
+
+        instr->tokens[instr->expression_count++] = tk;
+        token = strtok(NULL, " \t");
+    }
+
+    if (instr->expression_count == 0)
+        handle_error(INVALID_SYNTAX, line_n);
+
+    instruction_count++;
 }
 
-/* ----------- execute code ----------- */
+void resolve_labels(int line_n)
+{
+    for (int i = 0; i < unresolved_count; i++)
+    {
+        int instr_idx = unresolved_labels[i].instruction_index;
+        int idx = unresolved_labels[i].token_index;
+        const char *name = unresolved_labels[i].label_name;
 
-void execute_code() {}
+        int target = find_label(name);
+        if (target == -1)
+            handle_error(INVALID_SYNTAX, line_n);
 
-/* ----------- main functions ----------- */
+        instructions[instr_idx].tokens[idx].value = target;
+    }
+
+    free(unresolved_labels);
+    unresolved_labels = NULL;
+    unresolved_count = 0;
+    unresolved_capacity = 0;
+}
+
+/* ----------- validation ----------- */
+
+void validate_program()
+{
+    // Check that no label points past the last instruction
+    for (int i = 0; i < label_count; i++)
+    {
+        if (labels[i].instruction_index >= instruction_count)
+            handle_error(INVALID_SYNTAX, 0);
+    }
+
+    // label followed by label without instruction)
+    for (int i = 0; i < label_count - 1; i++)
+    {
+        if (labels[i + 1].instruction_index == labels[i].instruction_index)
+            handle_error(INVALID_SYNTAX, 0);
+    }
+}
+
+/* ----------- Code Reading ----------- */
+
 void read_code(FILE *file)
 {
     char buffer[MAX_STRING_LENGTH];
     int line_n = 0;
-    // call the init token list to prepare for token storage
-    init_token_list();
+
+    init_instructions();
+    init_labels();
 
     while (fgets(buffer, MAX_STRING_LENGTH, file))
     {
-
         line_n++;
 
         strip_newline(buffer);
@@ -372,7 +559,7 @@ void read_code(FILE *file)
             continue;
 
         case LINE_LABEL:
-            handle_labels(buffer, line_n);
+            handle_label(buffer, line_n);
             break;
 
         case LINE_INSTRUCTION:
@@ -380,21 +567,184 @@ void read_code(FILE *file)
             break;
         }
     }
+
+    resolve_labels(line_n);
+    validate_program();
 }
+
+/* ----------- access values ----------- */
+
+int get_value(Token *tk, int line_n)
+{
+    switch (tk->type)
+    {
+    case REGISTER:
+        return registers[tk->value];
+    case MEMORY_REFERENCE:
+    {
+        int addr = registers[tk->value];
+        if (addr < 0)
+            handle_error(INVALID_MEMORY_ACCESS, line_n);
+        if (addr >= memory_size)
+            return 0;
+        return memory[addr];
+    }
+    case LITERAL:
+        return tk->value;
+    default:
+        handle_error(INVALID_SYNTAX, line_n);
+        return 0;
+    }
+}
+
+void set_value(Token *tk, int value, int line_n)
+{
+    switch (tk->type)
+    {
+    case REGISTER:
+        registers[tk->value] = value;
+        break;
+    case MEMORY_REFERENCE:
+    {
+        int addr = registers[tk->value];
+        ensure_memory(addr, line_n);
+        memory[addr] = value;
+    }
+    break;
+    default:
+        handle_error(INVALID_SYNTAX, line_n);
+    }
+}
+
+/* ----------- execute code ----------- */
+
+void execute_code()
+{
+    int pc = 0;
+
+    while (pc < instruction_count)
+    {
+        Instruction *instr = &instructions[pc];
+        Token *tks = instr->tokens;
+        int line_n = instr->source_line;
+
+        switch (tks[0].type)
+        {
+        case HALT:
+            cleanup();
+            exit(0);
+
+        case GOTO: // goto label
+            pc = tks[1].value;
+            continue;
+
+        case IF: // if cond label
+            if (get_value(&tks[1], line_n))
+            {
+                pc = tks[2].value;
+                continue;
+            }
+            break;
+
+        case INPUT: // input ref_v ref_e
+        {
+            int value;
+            int eof = (scanf("%d", &value) != 1);
+            if (!eof)
+                set_value(&tks[1], value, line_n);
+            set_value(&tks[2], eof, line_n);
+        }
+        break;
+
+        case OUTPUT: // output value
+            if (printf("%d\n", get_value(&tks[1], line_n)) < 0)
+                handle_error(INVALID_OUTPUT, line_n);
+            break;
+
+        case REGISTER:
+        case MEMORY_REFERENCE:
+            if (instr->expression_count == 3)
+            {
+                // dest = src
+                set_value(&tks[0], get_value(&tks[2], line_n), line_n);
+            }
+            else if (instr->expression_count == 5)
+            {
+                // dest = a op b
+                int a = get_value(&tks[2], line_n);
+                int b = get_value(&tks[4], line_n);
+                int result = 0;
+
+                switch (tks[3].type)
+                {
+                case ADDITION:
+                    result = a + b;
+                    break;
+                case SUBTRACTION:
+                    result = a - b;
+                    break;
+                case MULTIPLICATION:
+                    result = a * b;
+                    break;
+                case DIVISION:
+                    if (b == 0)
+                        handle_error(DIVISION_BY_ZERO, line_n);
+                    result = a / b;
+                    break;
+                case EQUALS:
+                    result = (a == b);
+                    break;
+                case NOT_EQUALS:
+                    result = (a != b);
+                    break;
+                case LESS_THAN:
+                    result = (a < b);
+                    break;
+                case GREATER_THAN:
+                    result = (a > b);
+                    break;
+                case LESS_THANK_EQUAL:
+                    result = (a <= b);
+                    break;
+                case GREATER_THAN_EQUAL:
+                    result = (a >= b);
+                    break;
+                default:
+                    handle_error(INVALID_SYNTAX, line_n);
+                }
+
+                set_value(&tks[0], result, line_n);
+            }
+            else
+            {
+                handle_error(INVALID_SYNTAX, line_n);
+            }
+            break;
+
+        default:
+            handle_error(INVALID_SYNTAX, line_n);
+        }
+
+        pc++;
+    }
+}
+
+/* ----------- main ----------- */
 
 int main(int argc, char *argv[])
 {
     if (argc != 2)
-        return EXIT_FAILURE;
-
-    FILE *file = fopen(argv[1], "r");
-        if (!file)
         handle_error(INVALID_INPUT, 0);
 
-        read_code(file);
+    FILE *file = fopen(argv[1], "r");
+    if (!file)
+        handle_error(INVALID_INPUT, 0);
+
+    read_code(file);
     fclose(file);
 
     execute_code();
+
     cleanup();
     return 0;
 }
