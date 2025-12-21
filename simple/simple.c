@@ -473,7 +473,7 @@ void handle_instruction(char *s, int line_n)
 
     // Tokenize the line
     char *token = strtok(s, " \t");
-    while (token != NULL && instr->expression_count < MAX_TOKENS_PER_LINE)
+    while (token != NULL)
     {
         // Check for too many tokens
         if (instr->expression_count >= MAX_TOKENS_PER_LINE)
@@ -520,8 +520,78 @@ void resolve_labels(int line_n)
 
 /* ----------- validation ----------- */
 
+void validate_instruction(Instruction *instr, int line_n)
+{
+    Token *tks = instr->tokens;
+    int count = instr->expression_count;
+
+    switch (tks[0].type)
+    {
+    case HALT:
+        // halt takes no arguments
+        if (count != 1)
+            handle_error(INVALID_SYNTAX, line_n);
+        break;
+
+    case GOTO:
+        // goto label - exactly 2 tokens
+        if (count != 2)
+            handle_error(INVALID_SYNTAX, line_n);
+        if (tks[1].type != LABEL_REFERENCE && tks[1].value == -1)
+            handle_error(INVALID_SYNTAX, line_n);
+        break;
+
+    case IF:
+        // if cond label - exactly 3 tokens
+        if (count != 3)
+            handle_error(INVALID_SYNTAX, line_n);
+        break;
+
+    case INPUT:
+        // input ref_v ref_e - exactly 3 tokens
+        if (count != 3)
+            handle_error(INVALID_SYNTAX, line_n);
+        break;
+
+    case OUTPUT:
+        // output value - exactly 2 tokens
+        if (count != 2)
+            handle_error(INVALID_SYNTAX, line_n);
+        break;
+
+    case REGISTER:
+    case MEMORY_REFERENCE:
+        // dest = src (3 tokens) or dest = a op b (5 tokens)
+        if (count != 3 && count != 5)
+            handle_error(INVALID_SYNTAX, line_n);
+        // Check for assignment operator
+        if (count >= 2 && tks[1].type != ASSIGNMENT)
+            handle_error(INVALID_SYNTAX, line_n);
+        // For 5-token expressions, check operator is valid
+        if (count == 5)
+        {
+            TokenType op = tks[3].type;
+            if (op != ADDITION && op != SUBTRACTION && op != MULTIPLICATION &&
+                op != DIVISION && op != EQUALS && op != NOT_EQUALS &&
+                op != LESS_THAN && op != GREATER_THAN &&
+                op != LESS_THANK_EQUAL && op != GREATER_THAN_EQUAL)
+                handle_error(INVALID_SYNTAX, line_n);
+        }
+        break;
+
+    default:
+        handle_error(INVALID_SYNTAX, line_n);
+    }
+}
+
 void validate_program()
 {
+    // Validate each instruction
+    for (int i = 0; i < instruction_count; i++)
+    {
+        validate_instruction(&instructions[i], instructions[i].source_line);
+    }
+
     // Check that no label points past the last instruction
     for (int i = 0; i < label_count; i++)
     {
@@ -529,7 +599,7 @@ void validate_program()
             handle_error(INVALID_SYNTAX, 0);
     }
 
-    // label followed by label without instruction)
+    // label followed by label without instruction
     for (int i = 0; i < label_count - 1; i++)
     {
         if (labels[i + 1].instruction_index == labels[i].instruction_index)
